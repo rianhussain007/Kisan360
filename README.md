@@ -1,3 +1,4 @@
+
 # Kisan360: The AI Smart Farming Assistant
 
 > **Hackathon Submission**  
@@ -133,3 +134,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Farmers and agricultural experts who provided valuable insights
 - Open-source communities for their amazing tools and libraries
 - Mentors and organizers of VYUHATECH 2.0
+
