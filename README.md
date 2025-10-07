@@ -125,10 +125,8 @@ We welcome contributions from the community! Please read our [Contributing Guide
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 👥 Team
-- [Team Member 1 Name] - Role
-- [Team Member 2 Name] - Role
-- [Team Member 3 Name] - Role
-- [Team Member 4 Name] - Role
+- Rian Hussain - Lead Developer & System Architect
+- Shree Sagar Y N- Product Lead & UI/UX Strategist
 
 ## 🙏 Acknowledgments
 - Farmers and agricultural experts who provided valuable insights
