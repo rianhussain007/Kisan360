@@ -9,14 +9,18 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [countryCode, setCountryCode] = useState("+91")
   const [mobileNumber, setMobileNumber] = useState("")
+  const [cropType, setCropType] = useState("")
+  const [season, setSeason] = useState("")
 
   const handleGetStarted = () => {
-    if (mobileNumber.length === 10) {
-      // Store mobile number and redirect to dashboard
+    if (mobileNumber.length === 10 && cropType && season) {
+      // Store mobile number, crop, season and redirect to dashboard
       localStorage.setItem("userMobile", `${countryCode}${mobileNumber}`)
+      localStorage.setItem("userCrop", cropType)
+      localStorage.setItem("userSeason", season)
       router.push("/")
     } else {
-      alert("Please enter a valid 10-digit mobile number")
+      alert("Please enter a valid 10-digit mobile number, select crop type, and season")
     }
   }
 
@@ -79,6 +83,45 @@ export default function OnboardingPage() {
                 className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
+          </div>
+
+          {/* Crop Type Selection */}
+          <div className="mb-6">
+            <label htmlFor="crop" className="mb-2 block text-sm font-medium text-gray-700">
+              Primary Crop Type
+            </label>
+            <select
+              id="crop"
+              value={cropType}
+              onChange={(e) => setCropType(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="">Select Crop</option>
+              <option value="wheat">Wheat</option>
+              <option value="rice">Rice</option>
+              <option value="maize">Maize</option>
+              <option value="cotton">Cotton</option>
+              <option value="sugarcane">Sugarcane</option>
+              <option value="potato">Potato</option>
+            </select>
+          </div>
+
+          {/* Season Selection */}
+          <div className="mb-6">
+            <label htmlFor="season" className="mb-2 block text-sm font-medium text-gray-700">
+              Current Season
+            </label>
+            <select
+              id="season"
+              value={season}
+              onChange={(e) => setSeason(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="">Select Season</option>
+              <option value="kharif">Kharif (Monsoon)</option>
+              <option value="rabi">Rabi (Winter)</option>
+              <option value="zaid">Zaid (Summer)</option>
+            </select>
           </div>
 
           {/* Get Started Button */}

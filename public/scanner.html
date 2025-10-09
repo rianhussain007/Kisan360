@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Crop Health Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        #loading {
+            text-align: center;
+            color: #4a5568;
+            font-size: 1.2em;
+            margin: 40px 0;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 15px;
+            margin: 20px auto;
+            display: block;
+            border: 3px solid #e2e8f0;
+            background: #000;
+        }
+
+        #prediction {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin: 20px 0;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(72, 187, 120, 0.3);
+        }
+
+        .scan-button {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px auto;
+            display: block;
+        }
+
+        .scan-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(66, 153, 225, 0.3);
+        }
+
+        .scan-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .instructions {
+            background: #edf2f7;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            #video {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌿 AI Crop Health Scanner</h1>
+
+        <div id="loading">Loading AI Model...</div>
+
+        <video id="video" autoplay playsinline style="display: none;"></video>
+
+        <div id="prediction" style="display: none;"></div>
+
+        <button class="scan-button" id="scanButton" onclick="scanOnce()" style="display: none;">
+            🔍 Scan Crop
+        </button>
+
+        <div class="instructions">
+            <strong>For best results:</strong><br>
+            • Ensure good lighting<br>
+            • Focus on a single leaf<br>
+            • Hold camera steady
+        </div>
+    </div>
+
+    <script>
+        let model;
+        let isScanning = false;
+
+        async function loadModel() {
+            try {
+                console.log('Loading model...');
+                model = await tf.loadGraphModel('/model/tensorflow_model/model.json');
+                console.log('Model loaded successfully');
+
+                // Warm up the model
+                const dummyInput = tf.zeros([1, 224, 224, 3]);
+                await model.predict(dummyInput);
+                dummyInput.dispose();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('video').style.display = 'block';
+                document.getElementById('scanButton').style.display = 'block';
+
+                startCamera();
+            } catch (err) {
+                console.error('Failed to load model:', err);
+                document.getElementById('loading').innerHTML = '❌ Failed to load AI model. Please refresh the page.';
+            }
+        }
+
+        async function startCamera() {
+            const video = document.getElementById('video');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                video.srcObject = stream;
+                console.log('Camera started successfully');
+            } catch (err) {
+                console.error('Camera access error:', err);
+                document.getElementById('loading').innerHTML = '❌ Cannot access camera. Please check permissions.';
+            }
+        }
+
+        async function scanOnce() {
+            if (!model || isScanning) return;
+
+            isScanning = true;
+            const scanButton = document.getElementById('scanButton');
+            const predictionEl = document.getElementById('prediction');
+
+            try {
+                scanButton.disabled = true;
+                scanButton.innerHTML = '🔄 Analyzing...';
+
+                const video = document.getElementById('video');
+
+                // Preprocess the image
+                const tensor = tf.tidy(() => {
+                    return tf.browser.fromPixels(video)
+                        .resizeNearestNeighbor([224, 224])
+                        .toFloat()
+                        .div(tf.scalar(255))
+                        .expandDims();
+                });
+
+                // Make prediction
+                const predictions = await model.predict(tensor);
+                const data = await predictions.data();
+
+                // Find the top prediction
+                const maxIdx = Array.from(data).indexOf(Math.max(...Array.from(data)));
+
+                // Get class name from the loaded class indices
+                const classResponse = await fetch('/model/class_indices.json');
+                const classMap = await classResponse.json();
+                const label = Object.keys(classMap).find(key => classMap[key] === maxIdx) || 'Unknown';
+
+                const confidence = (data[maxIdx] * 100).toFixed(2);
+
+                // Show prediction
+                predictionEl.innerHTML = `
+                    <div>
+                        <div style="font-size: 1.1em; margin-bottom: 8px;">🎯 ${label}</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Confidence: ${confidence}%</div>
+                    </div>
+                `;
+                predictionEl.style.display = 'flex';
+
+                // Cleanup
+                tf.dispose([tensor, predictions]);
+
+            } catch (err) {
+                console.error('Prediction error:', err);
+                predictionEl.innerHTML = '❌ Error making prediction. Please try again.';
+                predictionEl.style.display = 'flex';
+            } finally {
+                scanButton.disabled = false;
+                scanButton.innerHTML = '🔍 Scan Crop';
+                isScanning = false;
+            }
+        }
+
+        // Load model when page loads
+        document.addEventListener('DOMContentLoaded', loadModel);
+
+        // Handle page visibility changes to pause/resume camera
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Pause camera when page is not visible
+                const video = document.getElementById('video');
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.enabled = false);
+                }
+            } else {
+                // Resume camera when page becomes visible
+                const video = document.getElementById('video');
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.enabled = true);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

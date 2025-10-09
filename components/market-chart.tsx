@@ -1,82 +1,71 @@
-"use client"
+"use client";
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import React from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-type Props = {
-  crop: string
+export interface PriceDataPoint {
+  date: string;
+  price: number;
 }
 
-// Mock market data
-const marketData: Record<string, Array<{ date: string; price: number }>> = {
-  sorghum: [
-    { date: "Mon", price: 2850 },
-    { date: "Tue", price: 2920 },
-    { date: "Wed", price: 2880 },
-    { date: "Thu", price: 2950 },
-    { date: "Fri", price: 3020 },
-    { date: "Sat", price: 3100 },
-    { date: "Sun", price: 3150 },
-  ],
-  chickpea: [
-    { date: "Mon", price: 5200 },
-    { date: "Tue", price: 5150 },
-    { date: "Wed", price: 5300 },
-    { date: "Thu", price: 5280 },
-    { date: "Fri", price: 5400 },
-    { date: "Sat", price: 5450 },
-    { date: "Sun", price: 5500 },
-  ],
-  "pearl-millet": [
-    { date: "Mon", price: 2100 },
-    { date: "Tue", price: 2150 },
-    { date: "Wed", price: 2120 },
-    { date: "Thu", price: 2200 },
-    { date: "Fri", price: 2250 },
-    { date: "Sat", price: 2280 },
-    { date: "Sun", price: 2300 },
-  ],
-  wheat: [
-    { date: "Mon", price: 2400 },
-    { date: "Tue", price: 2420 },
-    { date: "Wed", price: 2450 },
-    { date: "Thu", price: 2480 },
-    { date: "Fri", price: 2500 },
-    { date: "Sat", price: 2520 },
-    { date: "Sun", price: 2550 },
-  ],
-}
+type MarketChartProps = {
+  data: PriceDataPoint[];
+  crop: string;
+};
 
-export function MarketChart({ crop }: Props) {
-  const data = marketData[crop] || marketData.sorghum
-  const currentPrice = data[data.length - 1].price
+const MarketChart: React.FC<MarketChartProps> = ({ data, crop }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
+        <p className="text-gray-500">No price data available for {crop}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold text-primary">₹{currentPrice}</span>
-        <span className="text-sm text-muted-foreground">per quintal</span>
+    <div className="w-full h-64">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-medium">{crop} Price Trend</h3>
+        <span className="text-sm text-gray-500">Last 7 days</span>
       </div>
-      <p className="text-xs text-muted-foreground">Last 7 days trend from nearest mandi</p>
-      <ChartContainer
-        config={{
-          price: {
-            label: "Price",
-            color: "hsl(var(--primary))",
-          },
-        }}
-        className="h-[200px] w-full"
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-            <XAxis dataKey="date" className="text-xs" />
-            <YAxis className="text-xs" />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Line type="monotone" dataKey="price" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </ChartContainer>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+          <XAxis 
+            dataKey="date" 
+            axisLine={false} 
+            tickLine={false} 
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+          />
+          <YAxis 
+            axisLine={false} 
+            tickLine={false} 
+            tick={{ fill: '#6b7280', fontSize: 12 }}
+            tickFormatter={(value) => `₹${value}`}
+            width={50}
+          />
+          <Tooltip 
+            contentStyle={{
+              backgroundColor: 'white',
+              borderRadius: '0.5rem',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+            }}
+            formatter={(value: number) => [`₹${value}`, 'Price']}
+            labelFormatter={(label) => `Date: ${label}`}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="price" 
+            stroke="#10b981" 
+            strokeWidth={2}
+            dot={{ r: 4, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: '#059669', stroke: '#fff', strokeWidth: 2 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
-  )
-}
+  );
+};
+
+export default MarketChart;

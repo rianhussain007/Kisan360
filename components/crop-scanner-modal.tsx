@@ -1,10 +1,19 @@
 "use client"
 
-import { useState, type ChangeEvent, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Upload, Camera, AlertCircle, CheckCircle2, X } from "lucide-react"
+import { Camera, AlertCircle, CheckCircle2, X, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import type { VisionResult } from "@/lib/types"
+import * as tf from '@tensorflow/tfjs'
+
+interface ClassMap {
+  [key: string]: string;
+}
+
+interface Prediction {
+  label: string;
+  confidence: string;
+}
 
 type Props = {
   open: boolean
@@ -12,51 +21,145 @@ type Props = {
 }
 
 export function CropScannerModal({ open, onOpenChange }: Props) {
-  const [uploading, setUploading] = useState(false)
-  const [result, setResult] = useState<VisionResult | null>(null)
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [model, setModel] = useState<tf.GraphModel | null>(null)
+  const [classMap, setClassMap] = useState<ClassMap>({})
+  const [prediction, setPrediction] = useState<Prediction | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [modelLoading, setModelLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
 
+  // Load model + class names
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = ""
+    if (!open) return
+
+    const loadModel = async () => {
+      try {
+        setModelLoading(true)
+        setError(null)
+        await tf.setBackend('webgl')
+        await tf.ready()
+        const [loadedModel, classResponse] = await Promise.all([
+          tf.loadGraphModel('/tensorflow_model/model.json'),
+          fetch('/model/class_indices.json').then(res => res.json())
+        ])
+
+        setModel(loadedModel)
+        setClassMap(classResponse)
+
+        // Warm up the model
+        const dummyInput = tf.zeros([1, 224, 224, 3])
+        await loadedModel.predict(dummyInput)
+        dummyInput.dispose()
+
+      } catch (err) {
+        console.error('Model load error:', err)
+        setError('Failed to load the AI model. Please try again later.')
+      } finally {
+        setModelLoading(false)
+      }
     }
-    return () => {
-      document.body.style.overflow = ""
-    }
+
+    loadModel()
   }, [open])
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  // Setup camera
+  useEffect(() => {
+    if (!open || modelLoading) return
 
-    setUploading(true)
-    setResult(null)
+    const setupCamera = async () => {
+      try {
+        if (!navigator.mediaDevices) {
+          throw new Error('Camera access not supported on this device')
+        }
 
-    const url = URL.createObjectURL(file)
-    setImageUrl(url)
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        })
 
-    const formData = new FormData()
-    formData.append("image", file)
+        setStream(mediaStream)
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream
+          await videoRef.current.play()
+        }
+      } catch (err) {
+        console.error('Camera error:', err)
+        setError('Could not access the camera. Please check your permissions.')
+      }
+    }
+
+    setupCamera()
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop())
+        setStream(null)
+      }
+    }
+  }, [open, modelLoading])
+
+  // Cleanup on modal close
+  useEffect(() => {
+    if (!open) {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop())
+        setStream(null)
+      }
+      if (model) {
+        model.dispose()
+        setModel(null)
+      }
+      setPrediction(null)
+      setError(null)
+      setModelLoading(true)
+    }
+  }, [open, stream, model])
+
+  const scanCrop = async () => {
+    if (!model || !videoRef.current) return
 
     try {
-      const res = await fetch("/api/vision", {
-        method: "POST",
-        body: formData,
-      })
-      const data = await res.json()
-      setResult(data)
-    } catch (error) {
-      console.error("Upload failed:", error)
-    } finally {
-      setUploading(false)
-    }
-  }
+      setLoading(true)
+      setPrediction(null)
+      setError(null)
 
-  const handleReset = () => {
-    setResult(null)
-    setImageUrl(null)
+      const video = videoRef.current
+
+      // Preprocess the image
+      const tensor = tf.tidy(() => {
+        return tf.browser.fromPixels(video)
+          .resizeNearestNeighbor([224, 224])
+          .toFloat()
+          .div(tf.scalar(255))
+          .expandDims()
+      })
+
+      // Make prediction
+      const preds = model.predict(tensor) as tf.Tensor
+      const data = await preds.data()
+
+      // Find the top prediction
+      const maxIdx = Array.from(data).indexOf(Math.max(...Array.from(data)))
+      const label = classMap[maxIdx.toString()] || 'Unknown'
+
+      setPrediction({
+        label: label,
+        confidence: (data[maxIdx] * 100).toFixed(2),
+      })
+
+      // Cleanup
+      tf.dispose([tensor, preds])
+    } catch (err) {
+      console.error('Prediction error:', err)
+      setError('Error making prediction. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!open) return null
@@ -64,11 +167,11 @@ export function CropScannerModal({ open, onOpenChange }: Props) {
   return (
     <>
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
-      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-4xl -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-background p-6 shadow-lg max-h-[90vh] overflow-y-auto">
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-background p-6 shadow-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Crop Health Scanner</h2>
+            <h2 className="text-lg font-semibold">AI Crop Health Scanner</h2>
           </div>
           <button
             onClick={() => onOpenChange(false)}
@@ -79,85 +182,93 @@ export function CropScannerModal({ open, onOpenChange }: Props) {
           </button>
         </div>
 
-        {!result ? (
-          <div className="space-y-4">
-            <div className="border-2 border-dashed border-border rounded-lg p-12 text-center hover:border-primary/50 transition-colors">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-                id="image-upload"
-                disabled={uploading}
-              />
-              <label htmlFor="image-upload" className="cursor-pointer">
-                <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-lg font-medium mb-2">
-                  {uploading ? "Analyzing image..." : "Drop image here or click to upload"}
-                </p>
-                <p className="text-sm text-muted-foreground">Upload a clear photo of the plant leaf for AI diagnosis</p>
-              </label>
+        {error ? (
+          <div className="flex flex-col items-center justify-center p-6 text-center">
+            <div className="bg-red-50 text-red-700 p-4 rounded-lg max-w-md w-full">
+              <h2 className="font-semibold text-lg mb-2">Error</h2>
+              <p>{error}</p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="mt-4"
+                variant="destructive"
+              >
+                Try Again
+              </Button>
             </div>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <h3 className="font-semibold">Uploaded Image</h3>
-              {imageUrl && (
-                <img
-                  src={imageUrl || "/placeholder.svg"}
-                  alt="Uploaded crop"
-                  className="w-full rounded-lg border object-cover"
-                  style={{ maxHeight: "400px" }}
+          <div className="space-y-4">
+            <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
+              {modelLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    <p>Loading AI model...</p>
+                  </div>
+                </div>
+              ) : loading ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    <p>Analyzing...</p>
+                  </div>
+                </div>
+              ) : (
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  playsInline
+                  muted
                 />
               )}
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-3">Diagnosis Results</h3>
-                {result.detections.map((detection, i) => (
-                  <div key={i} className="space-y-3 mb-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-lg">{detection.label}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Confidence: {Math.round(detection.confidence * 100)}%
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          detection.severity === "high"
-                            ? "destructive"
-                            : detection.severity === "medium"
-                              ? "secondary"
-                              : "outline"
-                        }
-                      >
-                        {detection.severity === "high" && <AlertCircle className="h-3 w-3 mr-1" />}
-                        {detection.severity.toUpperCase()}
-                      </Badge>
-                    </div>
+            <div className="flex justify-center">
+              <Button
+                onClick={scanCrop}
+                disabled={loading || modelLoading || !model}
+                className="w-full max-w-xs"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    Analyzing...
+                  </>
+                ) : (
+                  'Scan Crop'
+                )}
+              </Button>
+            </div>
 
-                    <div className="rounded-lg bg-muted/50 p-4">
-                      <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-primary" />
-                        Recommended Actions
-                      </h4>
-                      <p className="text-sm text-foreground">{detection.recommendation}</p>
+            {prediction && (
+              <div className="rounded-lg bg-muted/50 p-4">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  Scan Result
+                </h3>
+                <div className="space-y-2">
+                  <p className="text-sm">
+                    <span className="font-medium">Condition:</span> {prediction.label}
+                  </p>
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Confidence:</span>
+                      <span>{prediction.confidence}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-green-500 h-2 rounded-full"
+                        style={{ width: `${prediction.confidence}%` }}
+                      />
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
+            )}
 
-              <div className="flex gap-2 pt-4">
-                <Button onClick={handleReset} variant="outline" className="flex-1 bg-transparent">
-                  Scan Another
-                </Button>
-                <Button onClick={() => onOpenChange(false)} className="flex-1">
-                  Done
-                </Button>
-              </div>
+            <div className="text-xs text-muted-foreground text-center">
+              <p>For best results, ensure good lighting and focus on a single leaf.</p>
             </div>
           </div>
         )}

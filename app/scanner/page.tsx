@@ -1,20 +1,34 @@
-import { Nav } from "@/components/nav"
-import { UploadImage } from "@/components/upload-image"
+'use client';
+
+import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+
+// Dynamically import the scanner with no SSR
+const DynamicCropScanner = dynamic(
+  () => import('@/components/CropScanner'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+      </div>
+    )
+  }
+);
 
 export default function ScannerPage() {
   return (
-    <>
-      <Nav />
-      <main className="mx-auto max-w-3xl px-4 py-6 space-y-4">
-        <h1 className="text-xl font-semibold">Crop Health Scanner</h1>
-        <div className="rounded-md border p-4">
-          <UploadImage />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          This POC uses a stubbed Vision API. Replace the /api/vision route with Google Cloud Vision or a HuggingFace
-          model and wire environment variables in Project Settings.
-        </p>
-      </main>
-    </>
-  )
+    <main className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        <Suspense fallback={
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+          </div>
+        }>
+          <DynamicCropScanner />
+        </Suspense>
+      </div>
+    </main>
+  );
 }

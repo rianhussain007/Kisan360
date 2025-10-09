@@ -11,7 +11,6 @@ const links = [
   { href: "/scanner", label: "Crop Scanner" },
   { href: "/daily", label: "Daily Advisor" },
   { href: "/resources", label: "Resources" },
-  { href: "/market", label: "Market" },
   { href: "/about", label: "About" },
 ]
 

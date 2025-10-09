@@ -1,0 +1,44 @@
+{
+  "diseases": [
+    {
+      "id": 1,
+      "name": "Tomato Blight",
+      "symptoms": ["brown spots", "yellow leaves", "white mold"],
+      "description": "A common fungal disease affecting tomato plants, causing leaf spots and fruit rot.",
+      "recommendation": "Remove and destroy infected plants. Apply copper-based fungicides. Ensure good air circulation and avoid overhead watering.",
+      "severity": "high"
+    },
+    {
+      "id": 2,
+      "name": "Powdery Mildew",
+      "symptoms": ["white powder", "yellow leaves", "stunted growth"],
+      "description": "Fungal disease that forms a white powdery coating on leaves and stems.",
+      "recommendation": "Apply sulfur or potassium bicarbonate-based fungicides. Remove affected leaves. Improve air circulation.",
+      "severity": "medium"
+    },
+    {
+      "id": 3,
+      "name": "Leaf Spot",
+      "symptoms": ["brown spots", "yellow halos", "leaf drop"],
+      "description": "Fungal or bacterial disease causing circular spots on leaves.",
+      "recommendation": "Remove infected leaves. Apply appropriate fungicide. Avoid overhead watering.",
+      "severity": "medium"
+    },
+    {
+      "id": 4,
+      "name": "Aphid Infestation",
+      "symptoms": ["curled leaves", "sticky residue", "black sooty mold"],
+      "description": "Small insects that suck sap from plants, causing distorted growth.",
+      "recommendation": "Spray with insecticidal soap or neem oil. Introduce natural predators like ladybugs.",
+      "severity": "low"
+    },
+    {
+      "id": 5,
+      "name": "Root Rot",
+      "symptoms": ["wilting", "yellow leaves", "black roots"],
+      "description": "Fungal disease that affects the roots, often due to overwatering.",
+      "recommendation": "Improve soil drainage. Reduce watering. Apply fungicide if caught early.",
+      "severity": "high"
+    }
+  ]
+}

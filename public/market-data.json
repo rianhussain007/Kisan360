@@ -1,0 +1,74 @@
+[
+    {
+        "id": "s1",
+        "name": "Green Valley Agro",
+        "location": "1234 Farm road, Bangalore",
+        "distance": 2.5,
+        "rating": 4.5,
+        "openNow": true,
+        "phone": "+91 9876543210",
+        "hours": "8:00 AM - 8:00 PM",
+        "products": ["seeds", "fertilizers", "pesticides", "tools"],
+        "priceLevel": 2
+    },
+    {
+        "id": "s2",
+        "name": "Krishna Krishi Kendra",
+        "location": "456 Agri Complex, Whitefield",
+        "distance": 3.2,
+        "rating": 4.2,
+        "openNow": true,
+        "phone": "+91 9876543211",
+        "hours": "9:00 AM - 7:00 PM",
+        "products": ["seeds", "fertilizers", "irrigation"],
+        "priceLevel": 1
+    },
+    {
+        "id": "s3",
+        "name": "Annapurna Seeds & Fertilizers",
+        "location": "789 Market Street, KR Puram",
+        "distance": 1.8,
+        "rating": 4.0,
+        "openNow": true,
+        "phone": "+91 9876543212",
+        "hours": "8:30 AM - 8:30 PM",
+        "products": ["seeds", "organic fertilizers", "garden tools"],
+        "priceLevel": 2
+    },
+    {
+        "id": "s4",
+        "name": "Sai Agro Tech",
+        "location": "321 Tech Park road, Electronic City",
+        "distance": 5.1,
+        "rating": 4.7,
+        "openNow": true,
+        "phone": "+91 9876543213",
+        "hours": "8:00 AM - 9:00 PM",
+        "products": ["irrigation systems", "greenhouse supplies", "tools"],
+        "priceLevel": 3
+    },
+    {
+        "id": "s5",
+        "name": "Organic Harvest",
+        "location": "159 Organic Lane, HSR Layout",
+        "distance": 2.3,
+        "rating": 4.8,
+        "openNow": false,
+        "phone": "+91 9876543214",
+        "hours": "10:00 AM - 6:00 PM",
+        "products": ["organic seeds", "vermicompost", "natural pesticides"],
+        "priceLevel": 3
+    },
+    {
+        "id": "s6",
+        "name": "Farmers Choice Agri Mart",
+        "location": "753 Rural road, Yelahanka",
+        "distance": 7.5,
+        "rating": 4.1,
+        "openNow": true,
+        "phone": "+91 9876543215",
+        "hours": "7:00 AM - 9:00 PM",
+        "products": ["seeds", "fertilizers", "pesticides", "irrigation", "tools"],
+        "priceLevel": 2
+    }
+]
